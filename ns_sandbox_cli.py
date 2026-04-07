@@ -27,6 +27,47 @@ DEFAULT_RATE_LIMIT_WINDOW = 60
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_BACKOFF = 2
 
+MAX_SANDBOX_NAME_LENGTH = 100
+VALID_ACCOUNT_ID_PATTERN = "^[A-Z0-9_-]+$"
+
+
+def validate_sandbox_id(sandbox_id):
+    """Validate that a sandbox ID is non-empty and well-formed."""
+    if not sandbox_id or not sandbox_id.strip():
+        print("Error: Sandbox ID cannot be empty.")
+        sys.exit(1)
+    if not sandbox_id.startswith("SB"):
+        print(f"Error: Invalid sandbox ID format '{sandbox_id}'. Expected format: SB followed by numbers (e.g., SB12345).")
+        sys.exit(1)
+
+
+def validate_sandbox_name(name):
+    """Validate that a sandbox name is reasonable."""
+    if not name or not name.strip():
+        print("Error: Sandbox name cannot be empty.")
+        sys.exit(1)
+    if len(name) > MAX_SANDBOX_NAME_LENGTH:
+        print(f"Error: Sandbox name exceeds maximum length of {MAX_SANDBOX_NAME_LENGTH} characters.")
+        sys.exit(1)
+
+
+def validate_account_id(account_id):
+    """Validate that an account ID looks reasonable."""
+    if not account_id or not account_id.strip():
+        print("Error: Account ID cannot be empty.")
+        sys.exit(1)
+    import re
+    if not re.match(VALID_ACCOUNT_ID_PATTERN, account_id):
+        print(f"Error: Invalid account ID format '{account_id}'. Expected uppercase letters, numbers, hyphens, or underscores.")
+        sys.exit(1)
+
+
+def validate_positive_int(value, name):
+    """Validate that a value is a positive integer."""
+    if value is not None and value <= 0:
+        print(f"Error: {name} must be a positive integer, got {value}.")
+        sys.exit(1)
+
 
 class RateLimiter:
     """Token bucket rate limiter for API calls."""
@@ -201,6 +242,7 @@ def list_sandboxes(args):
     if not account_id:
         print("Error: Account ID required. Use --account or run 'ns-sandbox-cli config' first.")
         sys.exit(1)
+    validate_account_id(account_id)
 
     token_id = args.token or config.get("token_id")
     token_secret = args.token_secret or config.get("token_secret")
@@ -269,12 +311,15 @@ def list_sandboxes(args):
 
 def create_sandbox(args):
     """Create a new sandbox environment."""
+    validate_sandbox_name(args.name)
+
     config = load_config()
 
     account_id = args.account or config.get("account_id")
     if not account_id:
         print("Error: Account ID required.")
         sys.exit(1)
+    validate_account_id(account_id)
 
     token_id = args.token or config.get("token_id")
     token_secret = args.token_secret or config.get("token_secret")
@@ -327,12 +372,15 @@ def create_sandbox(args):
 
 def delete_sandbox(args):
     """Delete a sandbox environment."""
+    validate_sandbox_id(args.sandbox_id)
+
     config = load_config()
 
     account_id = args.account or config.get("account_id")
     if not account_id:
         print("Error: Account ID required.")
         sys.exit(1)
+    validate_account_id(account_id)
 
     token_id = args.token or config.get("token_id")
     token_secret = args.token_secret or config.get("token_secret")
@@ -378,12 +426,15 @@ def delete_sandbox(args):
 
 def refresh_sandbox(args):
     """Refresh a sandbox environment from production."""
+    validate_sandbox_id(args.sandbox_id)
+
     config = load_config()
 
     account_id = args.account or config.get("account_id")
     if not account_id:
         print("Error: Account ID required.")
         sys.exit(1)
+    validate_account_id(account_id)
 
     token_id = args.token or config.get("token_id")
     token_secret = args.token_secret or config.get("token_secret")
@@ -430,12 +481,15 @@ def refresh_sandbox(args):
 
 def get_sandbox_details(args):
     """Get detailed information about a specific sandbox."""
+    validate_sandbox_id(args.sandbox_id)
+
     config = load_config()
 
     account_id = args.account or config.get("account_id")
     if not account_id:
         print("Error: Account ID required.")
         sys.exit(1)
+    validate_account_id(account_id)
 
     token_id = args.token or config.get("token_id")
     token_secret = args.token_secret or config.get("token_secret")
@@ -489,6 +543,12 @@ def get_sandbox_details(args):
 
 def configure(args):
     """Configure default credentials and settings."""
+    if args.account:
+        validate_account_id(args.account)
+
+    validate_positive_int(args.rate_limit, "Rate limit")
+    validate_positive_int(args.rate_limit_window, "Rate limit window")
+
     ensure_config_dir()
     config = load_config()
 
